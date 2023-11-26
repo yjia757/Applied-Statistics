@@ -1,0 +1,72 @@
+---
+title: "hw4_exercise"
+output: html_document
+date: "2023-02-05"
+---
+
+## Problem 1 
+
+The goal here is to confirm with numerical experiments the asymptotic normality of the LAD estimator.
+
+```{r}
+sample_size <- c(10, 20, 50, 100, 200, 500)
+R=1000
+
+record_int_slope <- function(R, n) {
+  inter <- c()
+  slope <- c()
+  for (i in 1:R) {
+    x <- rexp(n,1)
+    eps <- rt(n, 3)
+    y <- -4 + 3*x + eps
+    fit <- rq(y ~ x)
+    inter[i] <- fit$coefficients[1]
+    slope[i] <- fit$coefficients[2]
+  }
+  return(list(inter, slope))
+}
+
+for (i in 1:length(sample_size)) {
+  hist(record_int_slope(R, sample_size[i])[[1]])
+  hist(record_int_slope(R, sample_size[i])[[2]])
+}
+
+```
+
+From above, we see that as n increases, the curve of the historgram of both intercept and the slop are more towards a bell curve. 
+
+## Problem 2 
+
+Consider the 
+
+```{r}
+require(car)
+dat <- Florida
+# plot the votes for Buchanan versus the total number of votes.
+plot(BUCHANAN ~ Total, data = dat)
+dat1 <- dat[-which(rownames(dat)=="PALM.BEACH"), ]
+fit <- lm(BUCHANAN ~ Total, data = dat)
+new <- data.frame(Total = dat[which(rownames(dat)=="PALM.BEACH"), "Total"]) # one number
+predict(fit, new, interval = 'prediction', level = 0.99) # predicts new response
+
+# another way 
+#new <- dat[which(rownames(dat)=="PALM.BEACH"),]
+#predict(fit, new, interval = 'prediction')
+```
+
+From above using the data without PALM.BEACH, we get a least square fit, which predict that PALM.BEACH will have 1052.449 vote for BUCHANAN. In reality, it has 3407 for BUCHANAN.
+
+```{r}
+dat2 = log(dat)
+plot(BUCHANAN ~ Total, data = dat2)
+dat2.1 <- dat2[-which(rownames(dat2)=="PALM.BEACH"), ]
+fit2 <- lm(BUCHANAN ~ Total, data = dat2.1)
+abline(fit2, lwd = 3, col = 2)
+new <- data.frame(Total = dat2[which(rownames(dat2)=="PALM.BEACH"), "Total"]) # one number
+predict(fit2, new, interval = 'prediction', level = 0.99) # predicts new response
+
+```
+
+The fit is getting better. 
+
+

@@ -1,0 +1,410 @@
+---
+title: "HW2_exercise"
+output: html_document
+date: "2023-01-27"
+---
+
+## Problem 1 
+
+### part 1) 
+
+We are going to erform some simulations to check that the least squares coefficients are indeed normally distributed under the standard assumptions. Notice that the least squares coefficients are the estimators of the true intercept and coefficient. These estimators are random variables, and the theory tells us that they are normal with spercific mean and variables in terms of the deisgn matrix X and variance of the error. 
+
+Here we are going to use data to get some exact value of the estimator (the realization of the estimator), and then we do N=1000 times, therefore we can plot a histogram and qq-plot, which will give us some insight on the distribution of the estimator of $\beta_0$ and $\beta_1$. 
+
+```{r}
+library(MASS)
+
+coe <- function(n, N, sig) {
+  set.seed(2023)
+  beta0 <- c()
+  beta1 <- c()
+  for (i in 1:N) {
+    x <- runif(n, -1, 1)
+    # we generate response y by two different methods 
+    # method 1 
+    #y <- c()
+    #for (i in 1:length(x)) {y[i] <- rnorm(1, 1 + 2*x[i], sig)}
+    # method 2
+    y <- rnorm(n, 1 + 2 * x, sig)
+    fit <- lm(y ~ x)
+    beta0[i] <- fit$coefficients[1]
+    beta1[i] <- fit$coefficients[2]
+  }
+  return(list(beta0, beta1))
+}
+
+vis <- function(n, N, sig) { 
+  beta0 <- coe(n, N, sig)[[1]]
+  beta1 <- coe(n, N, sig)[[2]]
+  par(mfrow=c(2,2))
+  hist(beta0)
+  hist(beta1)
+  qqnorm(beta0, main = paste("Q-Q Plot for Intercept / n =", n))
+  qqline(beta0, col = "red")
+  qqnorm(beta1, main = paste("Q-Q Plot for Slop / n =", n))
+  qqline(beta1, col = "red")
+  
+}
+
+# they are indeed in bell curve. so the least squares intercept and slope are marginally normal
+vis(n = 50, N = 1000, sig = 0.5)
+vis(n = 100, N = 1000, sig = 0.5)
+vis(n = 200, N = 1000, sig = 0.5)
+vis(n = 500, N = 1000, sig = 0.5)
+```
+
+Now we show the intercept and slop are jointly normal. We will use function `kde2d`. You can treat this function as a 2d histogram for now. 
+
+```{r}
+
+kerd <- function(n, N, sig) {
+  beta0 <- coe(n, N, sig)[[1]]
+  beta1 <- coe(n, N, sig)[[2]]
+  kernelDensity = kde2d(beta0, beta1, n = 100) # n is the grid 
+  filled.contour(kernelDensity, main = paste("Kernel Density / n =", n))
+}
+
+kerd(n = 50, N = 1000, sig = 0.5)
+kerd(n = 100, N = 1000, sig = 0.5)
+kerd(n = 200, N = 1000, sig = 0.5)
+kerd(n = 500, N = 1000, sig = 0.5)
+
+```
+
+### part 2)
+
+Repeat a) with errors that have the t-distribution with $k \in \{2, 5, 10, 20, 50\}$ degrees of freedom. Do that for $n \n \{50, 100, 200, 500\}$. (There are 5 × 4 = 20 settings now.) Offer some brief comments. 
+
+```{r}
+coe.t <- function(n, N, sig, df) {
+  set.seed(2024)
+  beta0 <- c()
+  beta1 <- c()
+  for (i in 1:N) {
+    x <- runif(n, -1, 1)
+    # we generate response y by two different methods 
+    # method 1 
+    #y <- c()
+    #for (i in 1:length(x)) {y[i] <- rnorm(1, 1 + 2*x[i], sig)}
+    # method 2
+    y <- 1 + 2 * x + rt(n, df)
+    fit <- lm(y ~ x)
+    beta0[i] <- fit$coefficients[1]
+    beta1[i] <- fit$coefficients[2]
+  }
+  return(list(beta0, beta1))
+}
+
+vis.t <- function(n, N, sig, df) { 
+  beta0 <- coe.t(n, N, sig, df)[[1]]
+  beta1 <- coe.t(n, N, sig, df)[[2]]
+  par(mfrow=c(2,2))
+  hist(beta0)
+  hist(beta1)
+  qqnorm(beta0, main = paste("Q-Q Plot for Intercept / n =", n))
+  qqline(beta0, col = "red")
+  qqnorm(beta1, main = paste("Q-Q Plot for Slope / n =", n))
+  qqline(beta1, col = "red")
+}
+
+vis.t(n = 50, N = 1000, sig = 0.5, df = 2)
+vis.t(n = 100, N = 1000, sig = 0.5, df = 2)
+vis.t(n = 200, N = 1000, sig = 0.5, df = 2)
+vis.t(n = 500, N = 1000, sig = 0.5, df = 2)
+
+vis.t(n = 100, N = 1000, sig = 0.5, df = 5)
+vis.t(n = 200, N = 1000, sig = 0.5, df = 10)
+vis.t(n = 500, N = 1000, sig = 0.5, df = 20)
+vis.t(n = 500, N = 1000, sig = 0.5, df = 50)
+
+kerd.t <- function(n, N, sig, df) {
+  beta0 <- coe.t(n, N, sig, df)[[1]]
+  beta1 <- coe.t(n, N, sig, df)[[2]]
+  kernelDensity = kde2d(beta0, beta1, n = 100) # n is the grid 
+  filled.contour(kernelDensity, main = paste("Kernel Density / n =", n))
+}
+
+kerd.t(n = 50, N = 1000, sig = 0.5, df = 2)
+kerd.t(n = 100, N = 1000, sig = 0.5, df = 5)
+kerd.t(n = 200, N = 1000, sig = 0.5, df = 20)
+kerd.t(n = 500, N = 1000, sig = 0.5, df = 50)
+```
+
+As k and n increase, the closer the distribution approch to jointly normal. 
+
+### part 3) 
+
+Repeat b) with errors that have the Gamma distribution with shape $k \in \{0.01, 0.1, 0.2, 0.5, 1\}$.
+
+
+```{r}
+coe.g <- function(n, N, sig, shape) {
+  set.seed(2024)
+  beta0 <- c()
+  beta1 <- c()
+  for (i in 1:N) {
+    x <- runif(n, -1, 1)
+    # we generate response y by two different methods 
+    # method 1 
+    #y <- c()
+    #for (i in 1:length(x)) {y[i] <- rnorm(1, 1 + 2*x[i], sig)}
+    # method 2
+    y <- 1 + 2 * x + rgamma(n, shape)
+    fit <- lm(y ~ x)
+    beta0[i] <- fit$coefficients[1]
+    beta1[i] <- fit$coefficients[2]
+  }
+  return(list(beta0, beta1))
+}
+
+vis.g <- function(n, N, sig, shape) { 
+  beta0 <- coe.g(n, N, sig, shape)[[1]]
+  beta1 <- coe.g(n, N, sig, shape)[[2]]
+  par(mfrow=c(2,2))
+  hist(beta0)
+  hist(beta1)
+  qqnorm(beta0, main = paste("Q-Q Plot for Intercept / n =", n))
+  qqline(beta0, col = "red")
+  qqnorm(beta1, main = paste("Q-Q Plot for Slope / n =", n))
+  qqline(beta1, col = "red")
+}
+
+vis.g(n = 50, N = 1000, sig = 0.5, shape = 0.01)
+vis.g(n = 100, N = 1000, sig = 0.5, shape = 0.1)
+vis.g(n = 200, N = 1000, sig = 0.5, shape = 0.2)
+vis.g(n = 500, N = 1000, sig = 0.5, shape = 0.5)
+vis.g(n = 500, N = 1000, sig = 0.5, shape = 1)
+
+kerd.g <- function(n, N, sig, shape) {
+  beta0 <- coe.g(n, N, sig, shape)[[1]]
+  beta1 <- coe.g(n, N, sig, shape)[[2]]
+  kernelDensity = kde2d(beta0, beta1, n = 100) # n is the grid 
+  filled.contour(kernelDensity, main = paste("Kernel Density / n =", n))
+}
+
+kerd.g(n = 50, N = 1000, sig = 0.5, shape = 0.01)
+kerd.g(n = 100, N = 1000, sig = 0.5, shape = 0.1)
+kerd.g(n = 200, N = 1000, sig = 0.5, shape = 0.2)
+kerd.g(n = 500, N = 1000, sig = 0.5, shape = 0.5)
+kerd.g(n = 500, N = 1000, sig = 0.5, shape = 1)
+
+```
+
+As the shape increase to 1, the closer the distribution approach to jointly normal. 
+
+## Problem 2 
+
+### Part 1) 
+```{r}
+dat <- Boston
+attach(dat)
+# side-by-side boxplots for medv where the groups are defined by chas
+boxplot(medv ~ chas)
+```
+
+From the boxplot, we see that the house next to the river has higher price. 
+
+Next, we fit a model explaining medv as a function of chas. Output an ANOVA F-test
+
+Question: what is the hypothesis in our mind when we talk about ANOVA F-test? 
+Answer: by using the `anova(fit0, fit1)`, my null hypothesis is that the coefficient of the predictor `chas` is zero. 
+
+```{r}
+fit1 <- lm(medv ~ chas)
+fit0 <- lm(medv ~ 1)
+anova(fit0, fit1)
+# you can also look at the last line of summary(fit)
+```
+
+This consistent with the boxplot, because from the F test we found that the predictor chas is statistically significant, which means that `chas` is highly correlated with `medv`. On hte boxplot we see the quantiles shifted up for the group with `chas` equals 1. 
+
+Let’s perform some diagnostics, just in case. We focus on the presence of outliers as the predictor variable is categorical. 
+
+```{r}
+plot(abs(cooks.distance(fit)), type = 'h')
+
+```
+
+The Cook’s distances seem reasonable (all below 0.10) so that the outlying observations seen on the boxplots appear mild or moderate at most
+
+
+### Part 2) 
+
+Now we do the same with `rad`, index of accessibility to radial highways. It would seem that rad is ordinal, but this is not clear from the description. For now, we consider it categorical. 
+
+```{r}
+rad = as.factor(rad)
+boxplot(medv ~ rad)
+fit2 <- lm(medv ~ rad)
+fit0 <- lm(medv ~ 1)
+anova(fit0, fit2)
+```
+
+The small p-value is quite small, indicating that what we observed above based on a look at the boxplots is statistically significant. We look at Cook’s distances:
+
+```{r}
+plot(abs(cooks.distance(fit2)), type = 'h')
+```
+Again, they are quite moderate in size, which helps validate the p-value.
+
+### Part 3) 
+
+We produce a nice boxplot display of medv where the groups are defined by chas and rad jointly. By observing below, we see that the the house that does not close to chas river and has very large index of accessibility to radial highways has the lowes average price. 
+
+
+```{r}
+dat[,15] <- 0
+names(dat)[15] <- "chasandrad"
+
+for (i in 1:nrow(dat)) {
+  temp <- dat[i,]
+  if (temp[4] == 0 && temp[9] == 1) {
+    dat[i, 15] <- "01"
+  } else if (temp[4] == 0 && temp[9] == 2) {
+    dat [i, 15] <- "02"
+  } else if (temp[4] == 0 && temp[9] == 3) {
+    dat [i, 15] <- "03"
+  } else if (temp[4] == 0 && temp[9] == 5) {
+    dat [i, 15] <- "05"
+  } else if (temp[4] == 0 && temp[9] == 4) {
+    dat [i, 15] <- "04"
+  } else if (temp[4] == 0 && temp[9] == 8) {
+    dat [i, 15] <- "08"
+  } else if (temp[4] == 0 && temp[9] == 6) {
+    dat [i, 15] <- "06"
+  } else if (temp[4] == 0 && temp[9] == 7) {
+    dat [i, 15] <- "07"
+  } else if (temp[4] == 0 && temp[9] == 24) {
+    dat [i, 15] <- "024"
+  } else if (temp[4] == 1 && temp[9] == 1) {
+    dat[i, 15] <- "11"
+  } else if (temp[4] == 1 && temp[9] == 2) {
+    dat [i, 15] <- "12"
+  } else if (temp[4] == 1 && temp[9] == 3) {
+    dat [i, 15] <- "13"
+  } else if (temp[4] == 1 && temp[9] == 5) {
+    dat [i, 15] <- "15"
+  } else if (temp[4] == 1 && temp[9] == 4) {
+    dat [i, 15] <- "14"
+  } else if (temp[4] == 1 && temp[9] == 8) {
+    dat [i, 15] <- "18"
+  } else if (temp[4] == 0 && temp[9] == 6) {
+    dat [i, 15] <- "06"
+  } else if (temp[4] == 1 && temp[9] == 7) {
+    dat [i, 15] <- "17"
+  } else if (temp[4] == 1 && temp[9] == 24) {
+    dat [i, 15] <- "124"
+  }
+  
+}
+attach(dat)
+chasandrad = as.factor(chasandrad)
+boxplot(medv ~ chasandrad)
+
+```
+
+
+Fit a model explaining medv as a function of chas and rad first without, then with interactions.
+
+First, we will fit a model without interactions. Notice the order matters. With the order `chas` and then `rad`, for `anova(fit3)`, the second line p-value tells us that is for the F-test for whether `rad` is in the model when `chas` is already in the model (i.e., whether rad improves the fit significantly over a model with just rad).
+
+```{r}
+fit3 <- lm(medv ~ chas + rad)
+summary(fit3)
+anova(fit3, fit0)
+anova(fit3)
+
+# Here I want to highlight the difference between all these three. The last line of the summary is same as the second line of anova(fit3, fit0). That is, it is testing / comparing the model with both chas and rad versus without (only intercept). 
+
+# In summary(fit), you can treat each level as a separate variable (remember if a variable has 5 levels, then R will create 4 variables in the model). 
+
+# In summary(fit), the p-value of row i corresponds to the hypothesis test whether the variable i is in the model when others already in the model. 
+
+# In anova(fit3), the p-value on the 2nd line is for the F-test for whether rad is in the model when chas is already in the model (i.e., whether rad improves the fit significantly over a model with just rad).
+
+# Question. I think the difference between anova(fit3) and anova(fit3, fit0) is that as suggested, anova(fit3, fit0) is comparing the models with chas + rad and intercept only. On the other hand, anova(fit) comparing the model with chas while rad existing and the model with rad while chas existing. But from the solution it seems not the case, because he did medv ~ chas + rad, and then medv ~ rad + chas, and apply anova(fit) on both models. The p-values are actually different. 
+
+```
+
+Here we look at `anova(fit3)`, the p-value on the 2nd line is for the F-test for whether rad is in the model when chas is already in the model (i.e., whether rad improves the fit significantly over a model with just chas).
+
+We can get the reverse as follows:
+
+
+```{r}
+fit4 <- lm(medv ~ rad + chas) # the order does not matter 
+summary(fit4) 
+anova(fit4, fit0)
+anova(fit4)
+```
+
+Either way, the p-values are quite small, indicating that adding rad improves the fit significantly when chas is in the model, and vice-versa. We now fit a model with interactions:
+
+```{r}
+fit5 <- lm(medv ~ rad * chas) # the order does not matter 
+summary(fit5) 
+anova(fit5, fit0)
+anova(fit5)
+```
+
+
+To answer the question if the interactions are statistically significant, we can test for the significance of adding interactions by ANOVA. 
+
+```{r}
+# the only difference is that the order in fit3 and fit4. You see the result of F test are the same. 
+anova(fit5, fit3)
+anova(fit5, fit4) 
+```
+
+Another way to see the significance of the interaction term is through the following. Focus on the last line of `anova(fit5)`. That is, test whether the interation term is in the model while the other variables already existing in the model. 
+
+```{r}
+anova(fit5)
+```
+
+The p-value is again quite small, indicating that interactions improve the fit significantly even when the main effects are already in the model.
+
+### Part d) 
+
+We first consider a model with only lstat:
+
+```{r}
+plot(medv ~ lstat)
+fit7 = lm(medv ~ lstat)
+abline(fit7, col = 2, lwd = 2)
+summary(fit7)
+```
+
+This confirms that, indeed, medv tends to decrease as lstat increases, at least when we do not control for other variables.
+
+This confirms that, indeed, medv tends to decrease as lstat increases, at least when we do not control for other variables. We introduce chas to control for the bordering of the Charles River, and we do this by considering a model with interactions and comparing it with a model without interactions. (In the latter, the rate of decrease with respect to lstat does not depend on chas.)
+
+```{r}
+fit0 = lm(medv ~ lstat + chas)
+fit = lm(medv ~ lstat * chas)
+anova(fit0, fit)
+```
+
+The p-value is quite significant.
+
+ Next, we show some plot to help us understand if the rate of decrease of medv associated with lstat is influenced by whether the house is close to the border of chas river. 
+ 
+```{r}
+plot(medv ~ lstat, col = chas + 2) # this helps us color code the points based on which chas group they below to. 
+
+fit8 <- lm(medv[chas==0] ~ lstat[chas==0])
+abline(fit8, col= 2, lwd = 2)
+fit9 <- lm(medv[chas==1] ~ lstat[chas==1], color = 3)
+abline(fit9, col = 3, lwd = 2)
+
+legend("topright", c("borders Charles: No", "borders Charles: Yes"), col = 2:3, pch = 16)
+```
+
+
+
+
+
+
+
+

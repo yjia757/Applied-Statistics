@@ -1,0 +1,125 @@
+---
+title: "hw6_exercise"
+output: html_document
+date: "2023-02-28"
+---
+
+## Problem 1 
+
+### Part A
+Write a function `piecewiseConstant(x, y, q = 10, plot = TRUE)` taking in a one dimensional
+predictor variable `x` with values in $[0, 1]$ and a response `y`, and fits a piecewise constant model
+(by least squares) on q intervals of equal length partitioning the unit interval, with the option
+of producing a scatterplot with the fit overlaid.
+
+### Part B
+Apply your function to some dataset of your choice, either synthetic or real. (If you choose a
+real dataset, then provide the source.) Produce a single scatterplot, with lines corresponding
+to the fit with `q = 5 (blue), q = 10 (green), and q = 20 (red)`. Add a legend.
+
+```{r}
+
+f = function(x) (1 + 10*x - 5*x^2)*sin(10*x)
+n = 200
+x = runif(n, 0, 1)
+x = sort(x) # for convenience (see below)
+y = f(x) + rnorm(n)
+plot(x, y)
+t = seq(0, 1, len = 1000)
+lines(t, f(t), lwd = 2, lty = 2)
+
+piecewiseConstant <- function(x, y, q = 10, plot = TRUE) {
+  
+  all.breaks = (0:q)/q
+  inner.breaks = (1:(q-1))/q
+  val = numeric(q)
+  for (k in 1:q){
+	  ind = (all.breaks[k] < x)&(x <= all.breaks[k+1])
+	  val[k] = mean(y[ind])
+  }
+  fhat = stepfun(inner.breaks, val)
+  
+  if (plot == TRUE) {
+    plot(x, y)
+    abline(v = all.breaks, lty = 3)
+    lines(fhat, col = 2, lwd = 2, do.points = FALSE)
+  }
+}
+
+piecewiseConstant(x, y, q= 10, plot= TRUE)
+
+
+```
+
+```{r}
+piecewiseConstant2 <- function(x, y, q, plot = TRUE) {
+  
+  model <- vector(mode='list', length=3)
+  
+  for(i in 1:length(q)) {
+    # all.breaks = (0:q[i])/q[i]
+    inner.breaks = (1:(q[i]-1))/q[i]
+    val = numeric(q[i])
+    for (k in 1:q[i]){
+	    ind = (all.breaks[k] < x)&(x <= all.breaks[k+1])
+	    val[k] = mean(y[ind])
+    }
+    fhat = stepfun(inner.breaks, val)
+    model[[i]] <- fhat
+  }
+  
+  if (plot == TRUE) {
+    plot(x, y)
+    # abline(v = all.breaks, lty = 3)
+    for (i in 1:length(q)){
+      lines(model[[i]], col = i, lwd = 2, do.points = FALSE)
+    }
+    legend("topleft", legend=c("d=5", "d=10", "d=20"), col=c(1,2,3), lwd=2)
+  }
+}
+
+piecewiseConstant2(x, y, q=c(5, 10, 20), plot= TRUE)
+
+```
+
+
+## Problem 2 
+
+### Part A
+Fit a simple logistic model. Explain why the performance is bound to be mediocre.
+
+### Part B
+Fit a higher order polynomial logistic model. Consider several variants: degree 2 without interactions, degree 2 with interactions, and higher degree models. Track the average performance by averaging over R = 20 repeats. Produce a plot or two summarizing the results.
+
+```{r}
+library(MASS)
+n = 50
+x <- as.data.frame(mvrnorm(n, c(0,0), diag(2)))
+gen <- function(s) {
+  y <- rbinom(1, size = 1, exp(-norm(s, type = "2")))
+  return(y)
+}
+y <- apply(x, MARGIN = 1, FUN = gen)
+
+
+
+fit1 = glm(y ~ x[,1] + x[, 2], family = binomial(link = "logit"))
+summary(fit1) # none of the estimator is significant 
+
+# degree 2 without interactions
+fit2 = glm(y ~ x[,1] + x[, 2] + I(x[,1]^2) + I(x[,1]^2), family = binomial(link = "logit"))
+summary(fit2)
+
+# degree 2 with interactions
+fit3 = glm(y ~ x[,1] + x[, 2] + I(x[,1]^2) + I(x[,1]^2) + x[,1] * x[,2] + I(x[,1]^2) * I(x[,1]^2), family = binomial(link = "logit"))
+summary(fit3)
+
+# higher degree models
+fit4 = glm(y ~ x[,1] + x[, 2] + I(x[,1]^10) + I(x[,1]^10), family = binomial(link = "logit"))
+summary(fit3)
+
+# Does not fit very well 
+```
+
+
+

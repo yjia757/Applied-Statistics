@@ -1,0 +1,102 @@
+---
+title: "hw1_exercise"
+output: html_document
+date: "2023-01-19"
+---
+
+## Problem 1 
+
+```{r}
+
+confBand <- function(x, y, conf=0.95) {
+  # take predictor vector x and response vector y and returning a scatterplot
+  plot(x,y, pch=16)
+  
+  # add the least squares line on the plot 
+  fit <- lm(y ~ x)
+  pts <- seq(min(x), max(x), len=500)
+  vals <- predict(fit, data.frame(x=pts), se.fit=TRUE)
+  points(pts, vals[[1]], type='l', col='red') # lines(pts, vals[[1]], type='p', col='red')
+  
+  # add the confidence band on the plot 
+  # recall 282A lec22 slide 6. While constructing simulated CI for (a_i^t)(\beta), i=1,...,k,
+  # (keep in mind that among total number of k, d of a_i's are linearly independent, thus d should appear in the
+  # corresponding F critical value)
+  # besides d * F critical value, another important component is the se. sample standard deviation, 
+  # for different a_i, this se will be different. 
+  # that's why vals$se.fit gives us a vector of 50 elements, where each one is the se corresponding to different a_i 
+  # above is the derivation of simutaneous CI for lienar combinatiion of coefficients. 
+  # you can directly refer to the formula on 282A lec24 slide 2
+  # since we are doing straight line, p = 2 (intercept and slope)
+  vals.se <- vals$se.fit
+  n = length(x)
+  lower.band <- vals[[1]] - sqrt(2 * qf(conf, 2, n-2)) * vals.se
+  upper.band <- vals[[1]] + sqrt(2 * qf(conf, 2, n-2)) * vals.se
+  
+  # use polygon() to add the confidence band 
+  # without boundary, because otherwise there will be a line connecting the upper left corner to lower left corner 
+  polygon(c(pts, rev(pts)), c(upper.band, rev(lower.band)), col = rgb(0.3, 0.3, 0.3, 0.3), border = NA)
+  # we still want to add the upper and lower border line 
+  lines(pts, upper.band, col='black')
+  lines(rev(pts), rev(lower.band), col='black')
+  legend("bottomright", "regression line", col = "red", lty = 1)
+}
+
+```
+
+Next we apply the function `confBand` to the `04cars.rda`
+
+```{r}
+load("/Users/yiranjia/Desktop/win2023/Henry_math282b-Winter22/lectures/new/data/04cars.rda") # loads a data frame called "dat"
+tmp = dat[,c(13,15,16,18,19)] # extract selected variables
+tmp = tmp[complete.cases(tmp),] # extracts complete cases
+tmp = as.data.frame(tmp)
+names(tmp) = c("hp","mpg","wt","len","wd") # abbreviate names
+attach(tmp)
+
+confBand(mpg, wt, conf=0.95) 
+
+```
+
+## Problem 2 
+
+
+```{r}
+# generate fix sample with uniform distirbution U(0,1)
+
+contain.true.line <- function(sample, conf = 0.95) {
+  # generate response variales 
+  response <- 1 + sample + rnorm(length(sample), 0, 0.2)
+  
+  # create lower.bound and upper.bound for confidence band 
+  fit <- lm(response ~ sample)
+  pts <- seq(min(sample), max(sample), len=500)
+  vals <- predict(fit, data.frame(sample=pts), se.fit = TRUE)
+  lower.band <- vals[[1]] - sqrt(2 * qf(conf, 2, length(sample)-2)) * (vals$se.fit)
+  upper.band <- vals[[1]] + sqrt(2 * qf(conf, 2, length(sample)-2)) * (vals$se.fit)
+  
+  # if the confidence band contains the true line 
+  real.response <- 1 + pts 
+  cnt <- sum(real.response >= upper.band) + sum(real.response <= lower.band)
+  return(cnt)
+}
+
+N = 1000
+n=100
+sim_sample <- vector("list", N)
+for (i in 1:N) {
+  sim_sample[[i]] <- runif(n, 0, 1)
+}
+
+ans <- sum(unlist(lapply(sim_sample, contain.true.line, conf=0.99)) != 0)
+print(ans / N)
+
+```
+
+
+
+
+
+
+
+

@@ -1,0 +1,243 @@
+---
+title: "hw3_exercise"
+output: html_document
+date: "2023-02-04"
+---
+
+## Problem 1 
+
+This problem is meant to understand the behavior of some of the diagnostics for
+detecting outliers in synthetic examples.
+
+
+```{r}
+N = 50
+hat_val <- function(n, N) {
+  max_hat <- c()
+  for (i in 1:N){
+    x <- runif(n, 0, 1)
+    # recall the hat value is the diagonal entries of the projection matrix
+    # this is one way to get the hatvalue, or you can create a vector y = 1:50, and hatvalues(fit), where fit = lm(y ~ x). It does matter what y value we have, the design matrix is the same anyways. 
+    X <- cbind(1, x)
+    H <- X %*% solve(t(X) %*% X) %*% t(X)
+    max_hat[i] <- max(diag(H))
+  } 
+  return(max_hat)
+}
+col_hat = c()
+size <- c(20, 50, 100)
+for (i in 1 : length(size)) {
+  col_hat[i] <- hat_val(size[i], N)
+}
+plot(col_hat ~ size, type = "l")
+```
+
+Notice that there are $n$ hat values associated with the project matrix / hat matrix $H\in\mathbb{R}^{n\times n}$. We select the largest value among its diagnoal entries, repeat for `N=50` times, and then from that vector, we choose the largest value as the final maximum hat value in the context of sample size `n`. 
+
+We see that as sample sisze increase, the hat values are decreasing. That is, as sample size increase, there will be less predict outliers. 
+
+Next, we repeat the above with standard normal distribution. 
+
+```{r}
+N = 50
+hat_val <- function(n, N) {
+  max_hat <- c()
+  for (i in 1:N){
+    x <- rnorm(n, 0, 1)
+    # recall the hat value is the diagonal entries of the projection matrix 
+    X <- cbind(1, x)
+    H <- X %*% solve(t(X) %*% X) %*% t(X)
+    max_hat[i] <- max(diag(H))
+  }
+  return(max(max_hat))
+}
+col_hat = c()
+size <- c(20, 50, 100)
+for (i in 1 : length(size)) {
+  col_hat[i] <- hat_val(size[i], N)
+}
+plot(col_hat ~ size, type = "l")
+```
+
+Repeat with the exponential distribution (skewed)
+
+```{r} 
+N = 50
+lambda = 2
+hat_val <- function(n, N) {
+  max_hat <- c()
+  for (i in 1:N){
+    x <- rexp(n,lambda)
+    # recall the hat value is the diagonal entries of the projection matrix 
+    X <- cbind(1, x)
+    H <- X %*% solve(t(X) %*% X) %*% t(X)
+    max_hat[i] <- max(diag(H))
+  }
+  return(max(max_hat))
+}
+col_hat = c()
+size <- c(20, 50, 100)
+for (i in 1 : length(size)) {
+  col_hat[i] <- hat_val(size[i], N)
+}
+plot(col_hat ~ size, type = "l")
+```
+
+
+Repeat with the Student distribution with 5 degrees of freedom (heavy-tailed).
+
+```{r} 
+N = 50
+lambda = 10
+hat_val <- function(n, N) {
+  max_hat <- c()
+  for (i in 1:N){
+    x <- rt(n, 5)
+    # recall the hat value is the diagonal entries of the projection matrix 
+    X <- cbind(1, x)
+    H <- X %*% solve(t(X) %*% X) %*% t(X)
+    max_hat[i] <- max(diag(H))
+  }
+  return(max(max_hat))
+}
+col_hat = c()
+size <- c(20, 50, 100)
+for (i in 1 : length(size)) {
+  col_hat[i] <- hat_val(size[i], N)
+}
+plot(col_hat ~ size, type = "l")
+```
+
+## Problem 2
+
+This problem is meant as a practice for performing diagnostics for detecting outliers
+and for applying methods for robust regression.
+
+### part a) 
+
+```{r}
+library(MASS)
+dat <- Boston
+
+# Check for outliers in predictor - using hat values 
+fit <- lm(medv ~ ., data = dat)
+plot(hatvalues(fit), type = "h", main = "hat values", xlab = "", ylab = "", lwd = 3)
+which.max(hatvalues(fit)) # returns 381. 
+tail(sort(hatvalues(fit)),3) # return top five hatvalues along with their index 
+```
+
+Above we check for the the predictor outlier. The observation 366, 411, 406, 419, and 381 are the ones with highest hatvalues. The question now is - what makes that observation unusual?
+
+```{r}
+c <- c(406, 419, 381)
+dat[c,]
+
+colMeans(dat)
+
+```
+
+From above I observe that those outliers have stangely high crime. 
+
+### part b)
+
+Now check for same with outliers in response.
+
+```{r}
+plot(abs(rstudent(fit)), type = "h", main = "Studentized residuals", xlab = "", ylab = "", lwd = 3)
+tail(sort(abs(rstudent(fit))),3)
+
+
+```
+
+From above the response value of those top three outliers are very high. They are values of 50, but the mean of `medv` is 22.5. 
+
+#### part c) 
+
+Same with influential observations.
+
+```{r}
+plot(cooks.distance(fit), type = "h", lwd = 3, xlab = "", ylab = "", main = "Cook's distances")
+tail(sort(cooks.distance(fit)),3)
+plot(abs(dffits(fit)), type = "h", lwd = 3, xlab = "", ylab = "", main = "DFFITS")
+tail(sort(cooks.distance(fit)),3)
+dat[c(369, 373, 365),]
+
+
+out = abs(dfbetas(fit))
+par(mfrow = c(1, 2))
+plot(out[, 1], type = "h", main = "intercept", xlab = "", ylab = "", lwd = 3)
+plot(out[, 2], type = "h", main = "slope1", xlab = "", ylab = "", lwd = 3)
+plot(out[, 13], type = "h", main = "slope13", xlab = "", ylab = "", lwd = 3)
+# you can do for all 13 predictors. 
+```
+
+I don't how to tell what is special about these influencial points. If I am making a straight line, then I can plot and see where those points are compare to the fitted line. However, beta is in multi-dimension, I can't visulaize. 
+
+### part d) 
+Apply several methods for robust regression. Can you see a way to use one of these methods
+for detecting outliers?
+
+```{r}
+require(quantreg)
+# LAD
+fit = rq(medv ~ ., data = dat)
+# M-estimator: Huber
+fit = rlm(medv ~ ., data = dat)
+# M-estimator: Tukey
+fit = rlm(medv ~ ., data = dat, psi = psi.bisquare)
+# LMS
+fit = lmsreg(medv ~ ., data = dat)
+# LTS
+fit = ltsreg(medv ~ ., data = dat)
+# quantile
+fit = rq(medv ~ ., tau = (1:9)/10, data = dat)
+
+```
+
+
+
+```{r}
+N = 1e3
+n_set = c(20, 50, 100)
+out = matrix(NA, 3, N)
+for (t in 1:3){
+  n = n_set[t]
+  for (k in 1:N){
+    x = runif(n)
+    y = 2 -3*x + 0.5*rnorm(n)
+    fit = lm(y ~ x)
+    out[t, k] = max(rstudent(fit))
+  }
+}
+
+par(mfrow = c(1, 3), mai = c(0.6, 0.6, 0.2, 0.1))
+n = 20
+hist(out[1, ], 50, main = sprintf("n = %i", n), xlab = "maximum Studentized residual")
+abline(v = qt(1-0.01/n, n-3), col = 2)
+n = 50
+hist(out[2, ], 50, main = sprintf("n = %i", n), xlab = "maximum Studentized residual")
+abline(v = qt(1-0.01/n, n-3), col = 2)
+n = 100
+hist(out[3, ], 50, main = sprintf("n = %i", n), xlab = "maximum Studentized residual")
+abline(v = qt(1-0.01/n, n-3), col = 2)
+
+dev.off()
+
+install.packages("plotrix")
+require("plotrix")
+violin_plot(t(out), x_axis_labels = c(20, 50, 100), xlab = "sample size", ylab = "maximum Studentized residual out of 1000 trials", col = 2:4)
+
+```
+
+
+
+```{r}
+require(quantreg)
+fit = rlm(medv ~ ., data = Boston, psi = psi.bisquare)
+summary(fit)
+out = 1 - fit$w
+plot(out, type = "h", lwd = 2)
+```
+
+
+
